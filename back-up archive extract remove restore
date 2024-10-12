@@ -1,0 +1,211 @@
+Answers are underlined and in “bold” letters:
+
+
+2. Incomplete,
+what's wrong here:
+the archive was created from "./*" files of the home directory.
+But hidden files do NOT fall under "*" condition, that's why they were NOT included into the archive => .bashrc wasn't there => the shell prompt remains mangled even after data restoration.
+To perform the task completely, please find a way to include everything in the backup. It may be much simpler than looks initially 
+Part 1
+1.	Switch to a non-root account, if possible
+2.	Create an archive of the entire /etc directory. Write all errors into a separate output file.
+[st_242_02@c7-sandbox ~]$ tar -cvf ./etc-backup.tar /etc/* 2> ./etc-backup-err.log
+[st_242_02@c7-sandbox ~]$ ls                                                                      
+concat-file.txt  
+etc-backup-err.log  
+etc-backup.tar
+CORRECTED below:
+2.	Create an archive of the entire /etc directory. Write all errors into a separate output file.
+[st_242_02@c7-sandbox ~]$ tar -cvf ./etc-backup.tar /etc/* /etc/.* 2> ./etc-err.log 
+[st_242_02@c7-sandbox ~]$ ls                                                                               
+1.txt  
+apps-logs.tar.bz2  
+concat-file.txt  
+d2  
+etc-err.log   
+2.txt  
+chat.txt   
+d1  
+etc-backup.tar  
+sysinfo.tar.gz                                                                       
+[st_242_02@c7-sandbox ~]$ tar -tf etc-backup.tar | egrep '/\.' | egrep 'bash'                              
+etc/skel/.bash_profile  
+etc/skel/.bash_logout  
+etc/skel/.bashrc   
+,,, list continues
+OR
+tar -tf etc-backup.tar | less 
+AND CHECK ALL hidden files.
+
+3.	Count the number of:
+a)      files and directories without enough access permissions, reported in the step above.
+[st_242_02@c7-sandbox ~]$ grep -ci "permission denied" ./etc-backup-err.log             
+51
+b)      objects included in the archive.
+[st_242_02@c7-sandbox ~]$ tar -tf ./etc-backup.tar | wc -l                              
+1123  
+4.	Repeat step 2 by using the inbuilt compression feature of tar.
+[st_242_02@c7-sandbox ~]$ tar -czvf ./etc-backup.tar.gz /etc/* 2> ./etc-backup-err2.log
+[st_242_02@c7-sandbox ~]$ grep -ci "permission denied" ./etc-backup-err2.log            
+51                                                                                      
+[st_242_02@c7-sandbox ~]$ ls                                                            
+concat-file.txt   etc-backup-err.log  etc-backup.tar.gz etc-backup-err2.log  etc-backup.tar
+[st_242_02@c7-sandbox ~]$ tar -tf ./etc-backup.tar.gz | wc -l                           
+1123
+5.	Repeat step 2 by using external compression via pipes.
+[st_242_02@c7-sandbox ~]$ tar -cvf - ./etc/* 2> ./etc-backup-err3.log | bzip2 > ./etc-backup.tar.bz2                                                                            
+[st_242_02@c7-sandbox ~]$ ls                                                            
+concat-file.txt      
+etc-backup-err3.log  
+etc-backup.tar      
+etc-backup.tar.gz         
+etc-backup-err2.log  
+etc-backup-err.log   
+etc-backup.tar.bz2
+6.	Make compressed copies of /etc/passwd and /etc/group files.
+[st_242_02@c7-sandbox ~]$ gzip -cv /etc/passwd > ./passwd.gz                            
+/etc/passwd:     74.3%                                                                  
+[st_242_02@c7-sandbox ~]$ ls                                                            
+concat-file.txt      
+etc-backup-err3.log  
+etc-backup.tar      
+etc-backup.tar.gz         
+etc-backup-err2.log  
+etc-backup-err.log   
+etc-backup.tar.bz2  
+passwd.gz                 
+[st_242_02@c7-sandbox ~]$ gzip -cv /etc/group > ./group.gz                              
+/etc/group:      52.5%                                                                  
+[st_242_02@c7-sandbox ~]$ ls                                                            
+concat-file.txt      
+etc-backup-err.log  
+etc-backup.tar.gz                             
+etc-backup-err2.log  
+etc-backup.tar      
+group.gz           
+etc-backup-err3.log  
+etc-backup.tar.bz2  
+passwd.gz
+7.	Remove all files created during the task completion.
+[st_242_02@c7-sandbox ~]$ rm -rv etc-backup-err.log etc-backup.tar.gz etc-backup-err2.log etc-backup.tar group.gz etc-backup-err3.log etc-backup.tar.bz2 passwd.gz
+Part 2
+2. Incomplete,
+what's wrong here:
+the archive was created from "./*" files of the home directory.
+But hidden files do NOT fall under "*" condition, that's why they were NOT included into the archive => .bashrc wasn't there => the shell prompt remains mangled even after data restoration.
+To perform the task completely, please find a way to include everything in the backup. It may be much simpler than looks initially 
+
+1.	Create some new files and directories in your $HOME
+[st_242_02@c7-sandbox ~]$ touch 1.txt 2.txt                                             
+[st_242_02@c7-sandbox ~]$ mkdir -v d1 d2                                                
+mkdir: created directory ‘d1’                                                           
+mkdir: created directory ‘d2’                                                           
+[st_242_02@c7-sandbox ~]$ ls                                                            
+1.txt  2.txt  concat-file.txt  d1  d2
+2.	Backup your home directory, ensure "hidden" objects were also copied successfully
+[st_242_02@c7-sandbox ~]$ tar -cvf /tmp/USER-backup.tar ./*
+[st_242_02@c7-sandbox ~]$ ls -l /tmp/USER*
+-rw-r--r--. 1 st_242_02 qa     20480 Jul 26 17:27 USER-backup.tar
+3.	Remove your home directory, ensure it's empty and doesn't contain even "hidden" objects
+[st_242_02@c7-sandbox ~]$ rm -rvf ./.* ./*
+4.	Open a new SSH session to the server where you are performing this task. Show the shell prompt. Exit the session.
+Last login: Fri Jul 26 18:08:22 2024 from 192.168.40.12                     
+-bash-4.2$ ls                         
+-bash-4.2$ pwd                        
+/home/st_242_02                       
+-bash-4.2$ ls -la                     
+total 12                              
+drwx------.   2 st_242_02 qa   4096 Jul 26 18:12 .                          
+drwxr-xr-x. 161 root      root 4096 Jun 18 16:33 ..                         
+-rw-------.   1 st_242_02 qa     16 Jul 26 18:12 .bash_history              
+-bash-4.2$
+5.	Restore the content of your $HOME, ensure everything is in place
+[st_242_02@c7-sandbox home]$ tar -xvf /tmp/USER-backup.tar -C /home/st_242_02
+[st_242_02@c7-sandbox ~]$ ls -la                                                  
+total 32                                                                                                                                  
+drwx------.   4 st_242_02 qa    4096 Jul 26 18:19 .                                                              
+drwxr-xr-x. 161 root      root  4096 Jun 18 16:33 ..                                                                     
+-rw-r--r--.   1 st_242_02 qa       0 Jul 26 16:29 1.txt                                                                    
+-rw-r--r--.   1 st_242_02 qa       0 Jul 26 16:29 2.txt                                                                    
+-rw-------.   1 st_242_02 qa      35 Jul 26 18:15 .bash_history                                                       
+-rw-r--r--.   1 st_242_02 qa   11571 Jul 20 16:38 concat-file.txt                                             
+drwxr-xr-x.   2 st_242_02 qa    4096 Jul 26 16:29 d1                                                             
+drwxr-xr-x.   2 st_242_02 qa    4096 Jul 26 16:29 d2
+6.	Open a new SSH session to the same server, show the shell prompt, then exit the session.
+Last login: Fri Jul 26 18:13:55 2024 from 192.168.40.12                                                               
+-bash-4.2$ pwd                                                                                                         
+/home/st_242_02                                                                                                         
+-bash-4.2$ ls -la                                                                                                      
+total 32                                                                                                                
+drwx------.   4 st_242_02 qa    4096 Jul 26 18:19 .                                                                     
+drwxr-xr-x. 161 root      root  4096 Jun 18 16:33 ..                                                                    
+-rw-r--r--.   1 st_242_02 qa       0 Jul 26 16:29 1.txt                                                                 
+-rw-r--r--.   1 st_242_02 qa       0 Jul 26 16:29 2.txt                                                                 
+-rw-------.   1 st_242_02 qa      35 Jul 26 18:15 .bash_history                                                         
+-rw-r--r--.   1 st_242_02 qa   11571 Jul 20 16:38 concat-file.txt                                                       
+drwxr-xr-x.   2 st_242_02 qa    4096 Jul 26 16:29 d1                                                                    
+drwxr-xr-x.   2 st_242_02 qa    4096 Jul 26 16:29 d2  
+7.	Remove the backup you've created on step 2.
+[st_242_02@c7-sandbox ~]$ rm -rf /tmp/USER-backup.tar                             
+[st_242_02@c7-sandbox ~]$ ls /tmp/USER-backup.tar                                 
+ls: cannot access /tmp/USER-backup.tar: No such file or directory
+Part 3
+1.	Login at 192.168.40.14 and create a compressed archive from the /apps/logs directory.
+[st_242_02@c7-sandbox ~]$ tar -czvf /tmp/apps-logs.tar.gz /apps/logs             
+tar: Removing leading `/' from member names                                                                
+/apps/logs/                                                                      
+/apps/logs/nodejs-auth.st00.log                                                 
+ /apps/logs/java-ftb.st00.log                                                     
+/apps/logs/auth/                                                                 
+/apps/logs/auth/java-auth.st00.log                                               
+[st_242_02@c7-sandbox ~]$ ls /tmp/apps-logs.tar.gz                               
+/tmp/apps-logs.tar.gz
+2.	Perform the previous point in different ways (in terms of compression tools and command sequences).
+[st_242_02@c7-sandbox ~]$ tar -cvf - /apps/logs | bzip2 -c > /tmp/apps-log.tar.bz2    
+[st_242_02@c7-sandbox ~]$ ls /tmp/app*                                                
+/tmp/apps-logs.tar.gz  /tmp/apps-log.tar.bz2
+3.	Create a new compressed archive containing these items (hint: recall a particular exercise from the textbook):
+[st_242_02@c7-sandbox ~]$ mkdir -p /tmp/sysinfo270724 #archive below, after g)                                 [st_242_02@c7-sandbox ~]$ ls -la /tmp/sysinfo270724                                   
+total 16                                                                              
+drwxr-xr-x.  2 st_242_02 qa    4096 Jul 27 11:55 .                                    
+drwxrwxrwt. 50 root      root 12288 Jul 27 11:58 ..
+a)      All available information about the OS kernel
+[st_242_02@c7-sandbox ~]$ cat /proc/version | bzip2 -c > /tmp/sysinfo270724/kernel-info.bz2
+b)      The description of the Linux distribution
+[st_242_02@c7-sandbox ~]$ cat /etc/os-release | bzip2 -c > /tmp/sysinfo270724/os-info.bz2
+c)      CPU information
+[st_242_02@c7-sandbox ~]$ cat /proc/cpuinfo | bzip2 -c > /tmp/sysinfo270724/cpu-info.bz2
+d)      RAM usage
+[st_242_02@c7-sandbox ~]$ cat /proc/meminfo | bzip2 -c > /tmp/sysinfo270724/ram-info.bz2
+e)      Storage devices
+[st_242_02@c7-sandbox ~]$ cat /proc/diskstats | bzip2 -c > /tmp/sysinfo270724/disk-info.bz2
+f)       File system utilization (used and free space)
+[st_242_02@c7-sandbox ~]$ df -h | bzip2 -c > /tmp/sysinfo270724/space-info.bz2
+g)      Symlinks to /etc/passwd and /etc/group
+[st_242_02@c7-sandbox ~]$ ln -s /etc/passwd /tmp/sysinfo270724/passwd-syml                  
+[st_242_02@c7-sandbox ~]$ ln -s /etc/group /tmp/sysinfo270724/group-syml
+[st_242_02@c7-sandbox ~]$ tar -cvzf /tmp/sysinfo270724.tar.gz -C /tmp sysinfo270724
+4.	Send these two archives to 192.168.40.100 into your home directory via SCP. 
+[st_242_02@c7-sandbox ~]$ scp /tmp/apps-logs.tar.gz /tmp/sysinfo270724.tar.gz st_242_02@192.168.40.100:/home/st_242_02/
+5.	At 192.168.40.100:
+a.      For each archive, count the number of included objects.
+[st_242_02@c7-backend ~]$ tar -tf apps-logs.tar.gz | wc -l                             5                                                                                   
+[st_242_02@c7-backend ~]$ tar -tf sysinfo270724.tar.gz | wc -l                      9   
+
+b.      Unpack these archives
+[st_242_02@c7-backend ~]$ tar -xzvf sysinfo270724.tar.gz -C /home/st_242_02/sysdir14
+[st_242_02@c7-backend ~]$ tar -xzvf apps-logs.tar.gz -C /home/st_242_02/appsdir14
+
+c.       If you created symlinks on step 3 above, are they valid now?
+[st_242_02@c7-backend ~]$ ls -l sysdir14/sysinfo270724/passwd-syml                     
+lrwxrwxrwx. 1 st_242_02 qa 11 Jul 27 12:24 sysdir14/sysinfo270724/passwd-syml -> /etc/passwd                                                                                  
+[st_242_02@c7-backend ~]$ ls -l sysdir14/sysinfo270724/group-syml                      
+lrwxrwxrwx. 1 st_242_02 qa 10 Jul 27 12:25 sysdir14/sysinfo270724/group-syml -> /etc/group  
+6.	Depending on the OS on your home computer:
+a.      For Windows users: Install WinSCP and copy several files:
+ a) to any Sandbox server from your Windows host
+ b) from any Sandbox server to your Windows host. Show your actions or results as screenshots.
+
+7. Remove all objects created during this task at all involved servers.
+[st_242_02@c7-sandbox ~]$ rm -rv /tmp/apps-logs.tar.gz /tmp/apps-log.tar.bz2 /tmp/sysinfo270724 /tmp/sysinfo270724.tar.gz
+[st_242_02@c7-backend ~]$ rm -rvf appsdir14 apps-logs.tar.gz sysdir14 sysinfo270724.tar.gz
